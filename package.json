@@ -2,7 +2,7 @@
   "name": "ezy-lang",
   "displayName": "Ezy Language",
   "description": "Language server for Ezy (.ez): diagnostics, completion, hover, go-to-definition, signature help, outline, folding, and formatting — \"The clarity of Python, the speed of C\".",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "ezylang",
   "license": "GPL-2.0",
   "engines": {

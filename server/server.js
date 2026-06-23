@@ -111,7 +111,8 @@ function wordRangeAt(doc, line, col) {
 }
 
 function lineText(doc, line) {
-  return doc.getText(Range.create(line, 0, line, Number.MAX_SAFE_INTEGER)).replace(/\r?\n$/, "");
+  const lines = doc.getText().split(/\r?\n/);
+  return lines[line] !== undefined ? lines[line] : "";
 }
 
 function parseDiagnostics(output, doc) {

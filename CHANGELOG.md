@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Fix: the language server crashed while building diagnostic ranges
+  (`Range#create` rejected an out-of-bounds column), so no error/warning
+  squiggles appeared. Diagnostics work again.
+
 ## 0.4.0
 
 - **Language server** (`vscode-languageserver`) — all language intelligence now
