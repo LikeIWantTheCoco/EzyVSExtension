@@ -1,0 +1,78 @@
+{
+  "name": "ezy-lang",
+  "displayName": "Ezy Language",
+  "description": "Syntax highlighting, icon, completion, and error diagnostics for the Ezy language (.ez) — \"The clarity of Python, the speed of C\".",
+  "version": "0.2.0",
+  "publisher": "ezylang",
+  "license": "GPL-2.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "ezy",
+    "ezylang",
+    "ez"
+  ],
+  "icon": "icons/ezyicon.png",
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:ezy"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LikeIWantTheCoco/EzyLang"
+  },
+  "contributes": {
+    "configuration": {
+      "title": "Ezy",
+      "properties": {
+        "ezy.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ezy compiler binary. Empty = search ~/.local/bin then PATH."
+        },
+        "ezy.diagnostics.run": {
+          "type": "string",
+          "enum": ["onType", "onSave"],
+          "default": "onType",
+          "description": "When to run the ezy checker for error highlighting."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "ezy",
+        "aliases": [
+          "Ezy",
+          "ezy",
+          "EzyLang"
+        ],
+        "extensions": [
+          ".ez"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/ezyicon.svg",
+          "dark": "./icons/ezyicon.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ezy",
+        "scopeName": "source.ezy",
+        "path": "./syntaxes/ezy.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "ezy",
+        "path": "./snippets/ezy.json"
+      }
+    ]
+  }
+}

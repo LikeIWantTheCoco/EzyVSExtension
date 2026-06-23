@@ -1,0 +1,175 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Ezy",
+  "scopeName": "source.ezy",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#preprocessor" },
+    { "include": "#function-definition" },
+    { "include": "#type-definition" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#types" },
+    { "include": "#builtins" },
+    { "include": "#enum-variants" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#function-call" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.documentation.ezy",
+          "begin": "\"\"\"",
+          "end": "\"\"\""
+        },
+        {
+          "name": "comment.line.number-sign.ezy",
+          "begin": "#",
+          "end": "$"
+        }
+      ]
+    },
+    "preprocessor": {
+      "patterns": [
+        {
+          "name": "meta.preprocessor.include.ezy",
+          "match": "^\\s*(#include|import)\\b\\s*(\"[^\"]*\")?(\\s+(as)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+          "captures": {
+            "1": { "name": "keyword.control.import.ezy" },
+            "2": { "name": "string.quoted.double.ezy" },
+            "4": { "name": "keyword.control.import.ezy" },
+            "5": { "name": "entity.name.namespace.ezy" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.interpolated.ezy",
+          "begin": "f\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.ezy", "match": "\\\\." },
+            {
+              "name": "meta.interpolation.ezy",
+              "begin": "\\{",
+              "end": "\\}",
+              "patterns": [
+                { "include": "#builtins" },
+                { "include": "#constants" },
+                { "include": "#numbers" },
+                {
+                  "name": "constant.other.format-spec.ezy",
+                  "match": ":[^}]*"
+                },
+                {
+                  "name": "variable.other.ezy",
+                  "match": "[A-Za-z_][A-Za-z0-9_]*"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.ezy",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.ezy", "match": "\\\\." }
+          ]
+        },
+        {
+          "name": "string.quoted.single.ezy",
+          "match": "'(\\\\.|[^'])'"
+        }
+      ]
+    },
+    "function-definition": {
+      "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.declaration.function.ezy" },
+        "2": { "name": "entity.name.function.ezy" }
+      }
+    },
+    "type-definition": {
+      "match": "\\b(class|struct|enum|interface|impl|type)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.declaration.type.ezy" },
+        "2": { "name": "entity.name.type.ezy" }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ezy",
+          "match": "\\b(if|elif|else|for|while|do|switch|case|default|match|break|continue|return|try|except|defer|pass|in|go|select|region)\\b"
+        },
+        {
+          "name": "keyword.declaration.ezy",
+          "match": "\\b(fn|class|struct|enum|interface|impl|type|const|let|var|global|def|lambda|extern|import|pub|priv|op)\\b"
+        },
+        {
+          "name": "keyword.operator.word.ezy",
+          "match": "\\b(and|or|not|as)\\b"
+        },
+        {
+          "name": "keyword.other.concurrency.ezy",
+          "match": "\\b(spawn|chan|make|close)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.ezy",
+          "match": "\\b(true|false|null|nil|iota)\\b"
+        },
+        {
+          "name": "support.function.result.ezy",
+          "match": "\\b(Ok|Err|Some|None)\\b"
+        },
+        {
+          "name": "variable.language.self.ezy",
+          "match": "\\bself\\b"
+        }
+      ]
+    },
+    "types": {
+      "name": "support.type.primitive.ezy",
+      "match": "\\b(int|float|bool|string|char|void|dict|set|chan)\\b"
+    },
+    "builtins": {
+      "name": "support.function.builtin.ezy",
+      "match": "\\b(print|input|len|range|int|float|str|bool|chr|ord|hex|bin|format|type|abs|max|min|sqrt|pow|floor|ceil|round|sin|cos|tan|atan2|log|log2|log10|exp|fmod|hypot|clamp|sign|random|randint|randfloat|choice|seed|time|now|clock|date|datetime|strftime|year|month|day|hour|minute|second|weekday|sleep|assert|assert_eq|assert_ne|panic|exit|flush|enumerate|zip|getcwd|dirname|basename|abspath|path_join|path_ext|path_stem|path_exists|path_isfile|path_isdir|readfile|writefile|appendfile|copyfile|deletefile|rename|mkdir|listdir|filesize|getenv|argc|argv|cpu_count|maketrans|translate|toupper|tolower|make|close|lock|unlock|mutex|mutex_free|js|js_int|js_str)\\b(?=\\s*\\()"
+    },
+    "enum-variants": {
+      "match": "\\b([A-Z][A-Za-z0-9_]*)\\.([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "entity.name.type.ezy" },
+        "2": { "name": "constant.other.enum.ezy" }
+      }
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.hex.ezy", "match": "\\b0[xX][0-9a-fA-F]+\\b" },
+        { "name": "constant.numeric.binary.ezy", "match": "\\b0[bB][01]+\\b" },
+        { "name": "constant.numeric.float.ezy", "match": "\\b[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b" },
+        { "name": "constant.numeric.integer.ezy", "match": "\\b[0-9]+([eE][-+]?[0-9]+)?\\b" }
+      ]
+    },
+    "operators": {
+      "name": "keyword.operator.ezy",
+      "match": "(\\*\\*|//|->|<-|<<|>>|==|!=|<=|>=|\\+=|-=|\\*=|/=|%=|&&|\\|\\||[-+*/%<>=!&|^~?:])"
+    },
+    "function-call": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.call.ezy" }
+      }
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "main function": {
+    "prefix": "main",
+    "body": [
+      "fn main():",
+      "{",
+      "\t$0",
+      "\treturn 0",
+      "}"
+    ],
+    "description": "main entry point"
+  },
+  "function": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:args}) -> ${3:int}:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "function definition"
+  },
+  "void function": {
+    "prefix": "fnv",
+    "body": [
+      "fn ${1:name}(${2:args}):",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "void function"
+  },
+  "if": {
+    "prefix": "if",
+    "body": [
+      "if ${1:cond}:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "if block"
+  },
+  "if/elif/else": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:cond}:",
+      "{",
+      "\t$2",
+      "}",
+      "elif ${3:cond}:",
+      "{",
+      "\t$4",
+      "}",
+      "else:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "if / elif / else"
+  },
+  "for range": {
+    "prefix": "for",
+    "body": [
+      "for ${1:i} in range(${2:0}, ${3:10}):",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "for over a range"
+  },
+  "for each": {
+    "prefix": "foreach",
+    "body": [
+      "for ${1:x} in ${2:items}:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "for over a collection"
+  },
+  "while": {
+    "prefix": "while",
+    "body": [
+      "while ${1:cond}:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "while loop"
+  },
+  "struct": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name}:",
+      "{",
+      "\t${2:field}: ${3:int}",
+      "}"
+    ],
+    "description": "struct definition"
+  },
+  "enum": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:Name}:",
+      "{",
+      "\t${2:Variant} = ${3:0}",
+      "}"
+    ],
+    "description": "enum definition"
+  },
+  "class": {
+    "prefix": "class",
+    "body": [
+      "class ${1:Name}:",
+      "{",
+      "\t${2:field}: ${3:string}",
+      "",
+      "\tfn constructor(self, ${4:args}):",
+      "\t{",
+      "\t\t$0",
+      "\t}",
+      "}"
+    ],
+    "description": "class with constructor"
+  },
+  "match": {
+    "prefix": "match",
+    "body": [
+      "match ${1:value}:",
+      "{",
+      "\tcase ${2:pattern}: { $3 }",
+      "\tcase _: { $0 }",
+      "}"
+    ],
+    "description": "match block"
+  },
+  "switch": {
+    "prefix": "switch",
+    "body": [
+      "switch ${1:value}:",
+      "{",
+      "\tcase ${2:1}: { $3 break }",
+      "\tdefault: { $0 }",
+      "}"
+    ],
+    "description": "switch block"
+  },
+  "try/except": {
+    "prefix": "try",
+    "body": [
+      "try:",
+      "{",
+      "\t$1",
+      "}",
+      "except ${2:err}:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "try / except"
+  },
+  "print": {
+    "prefix": "print",
+    "body": ["print(${1:value})"],
+    "description": "print"
+  },
+  "region": {
+    "prefix": "region",
+    "body": [
+      "region:",
+      "{",
+      "\t$0",
+      "}"
+    ],
+    "description": "memory region block"
+  }
+}

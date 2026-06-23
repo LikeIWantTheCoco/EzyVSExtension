@@ -1,0 +1,42 @@
+# Sample Ezy file — for eyeballing the grammar
+import "math"
+
+const PI = 3.14159
+
+enum Color: { Red = 0  Green = 1  Blue = 2 }
+
+struct Point: { x: int  y: int }
+
+class Animal:
+{
+    name: string
+    fn constructor(self, n: string): { self.name = n }
+    fn speak(self) -> string: { return "..." }
+}
+
+fn add(a: int, b: int) -> int:
+{
+    return a + b
+}
+
+fn main():
+{
+    p = Point{x = 3, y = 4}
+    msg = f"point = ({p.x:03d}, {p.y}) pi={PI:.2f}"
+    print(msg)
+
+    for i in range(0, 10):
+    {
+        if i % 2 == 0: { print(i) }
+    }
+
+    match add(2, 3):
+    {
+        case 5: { print("five") }
+        case _: { print("other") }
+    }
+
+    c = Color.Blue
+    print(c, add(1, 2), PI ** 2)
+    return 0
+}
