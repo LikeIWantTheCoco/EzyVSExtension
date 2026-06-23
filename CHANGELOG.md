@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1
+
+- f-strings (`f"..."`) are no longer mis-analyzed: the `f` prefix and the string
+  body are masked, so the prefix is not flagged as an undefined name.
+- Generic functions/types are understood: type parameters (`fn f<T>(...)`) are
+  treated as defined, and parameters of generic functions and of functions whose
+  name contains digits (e.g. `color256`) are collected correctly (fixes spurious
+  "undefined name" errors on their parameters).
+- Formatting no longer registers a document formatter, so the generic
+  "Format Document" entry is gone — use **Ezy: Format** (runs `ezy fmt`).
+  Requires the matching compiler fix so `ezy fmt` formats your file only and
+  does not inline imported modules/library headers.
+
 ## 0.6.0
 
 - **Semantic tokens**: real var/type/function/method/parameter/property coloring

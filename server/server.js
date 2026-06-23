@@ -164,6 +164,16 @@ function maskCode(text) {
     }
     const c = text[i];
     if (c === "#") { let j = text.indexOf("\n", i); if (j < 0) j = n; blank(i, j); i = j; continue; }
+    // prefixed string like f"..." (or f'...'): blank the prefix letter too
+    if (/[A-Za-z]/.test(c) && (text[i + 1] === '"' || text[i + 1] === "'")) {
+      const q = text[i + 1]; let j = i + 2;
+      while (j < n) {
+        if (text[j] === "\\") { j += 2; continue; }
+        if (text[j] === q || text[j] === "\n") { if (text[j] === q) j++; break; }
+        j++;
+      }
+      blank(i, j); i = j; continue;
+    }
     if (c === '"' || c === "'") {
       let j = i + 1;
       while (j < n) {
@@ -212,7 +222,11 @@ function collectDefined(masked, docDir) {
   while ((m = tyRe.exec(masked))) names.add(m[1]);
   const declRe = /\b(?:const|global|let|var)\s+([A-Za-z_]\w*)/g;
   while ((m = declRe.exec(masked))) names.add(m[1]);
-  const paramRe = /\bfn\b\s*[A-Za-z_]*\s*\(([^)]*)\)/g;
+  // generic type parameters: fn name<T, U>(...) / class Name<T>
+  const genRe = /\b(?:fn|class|struct|interface)\s+[A-Za-z_]\w*\s*<([^>]*)>/g;
+  while ((m = genRe.exec(masked)))
+    for (const g of m[1].split(",")) { const nm = g.trim(); if (/^[A-Za-z_]\w*$/.test(nm)) names.add(nm); }
+  const paramRe = /\bfn\b\s*(?:[A-Za-z_]\w*)?\s*(?:<[^>]*>)?\s*\(([^)]*)\)/g;
   while ((m = paramRe.exec(masked)))
     for (const p of m[1].split(",")) { const nm = p.trim().split(/[:\s]/)[0]; if (/^[A-Za-z_]\w*$/.test(nm)) names.add(nm); }
   const asgRe = /^[ \t]*([A-Za-z_]\w*)\s*(?::[^=\n]+)?(?:[-+*/%&|^]|\*\*|\/\/|<<|>>)?=(?!=)/gm;
@@ -415,7 +429,6 @@ connection.onInitialize((params) => {
       referencesProvider: true,
       renameProvider: { prepareProvider: true },
       foldingRangeProvider: true,
-      documentFormattingProvider: true,
       signatureHelpProvider: { triggerCharacters: ["(", ","] },
       codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
       semanticTokensProvider: {
@@ -529,19 +542,6 @@ connection.onFoldingRanges((params) => {
   return ranges;
 });
 
-connection.onDocumentFormatting((params) => {
-  return new Promise((resolve) => {
-    const doc = documents.get(params.textDocument.uri);
-    if (!doc) { resolve([]); return; }
-    runEzy(doc, ["fmt"], (err, stdout) => {
-      if (err || !stdout) { resolve([]); return; }
-      const text = doc.getText();
-      const end = doc.positionAt(text.length);
-      resolve([TextEdit.replace(Range.create(Position.create(0, 0), end), stdout)]);
-    });
-  });
-});
-
 /* ── signature help ─────────────────────────────────────────────── */
 
 connection.onSignatureHelp((params) => {
@@ -587,7 +587,7 @@ connection.languages.semanticTokens.on((params) => {
   const tyRe = /\b(?:class|struct|enum|interface|type)\s+([A-Za-z_]\w*)/g;
   while ((m = tyRe.exec(masked))) typeNames.add(m[1]);
   const paramNames = new Set();
-  const paramRe = /\bfn\b\s*[A-Za-z_]*\s*\(([^)]*)\)/g;
+  const paramRe = /\bfn\b\s*(?:[A-Za-z_]\w*)?\s*(?:<[^>]*>)?\s*\(([^)]*)\)/g;
   while ((m = paramRe.exec(masked)))
     for (const p of m[1].split(",")) { const nm = p.trim().split(/[:\s]/)[0]; if (/^[A-Za-z_]\w*$/.test(nm)) paramNames.add(nm); }
 

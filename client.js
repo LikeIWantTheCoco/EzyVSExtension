@@ -6,6 +6,7 @@
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const cp = require("child_process");
 const vscode = require("vscode");
 const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 
@@ -38,6 +39,33 @@ async function runCurrentFile(compileOnly) {
   t.sendText(`${ezyBinary()} ${compileOnly ? "compile" : "run"} ${JSON.stringify(ed.document.uri.fsPath)}`);
 }
 
+// Run `ezy fmt` on a temp copy of the active buffer and replace its contents.
+function formatCurrentFile() {
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || ed.document.languageId !== "ezy") {
+    vscode.window.showWarningMessage("Ezy: no .ez file is active.");
+    return;
+  }
+  const doc = ed.document;
+  const dir = doc.isUntitled ? os.tmpdir() : path.dirname(doc.uri.fsPath);
+  const base = doc.isUntitled ? "untitled" : path.basename(doc.uri.fsPath, ".ez");
+  const tmp = path.join(dir, `.${base}.ezyfmt-${process.pid}.ez`);
+  try { fs.writeFileSync(tmp, doc.getText()); }
+  catch (e) { vscode.window.showErrorMessage("Ezy: cannot write temp file for formatting."); return; }
+  cp.execFile(ezyBinary(), ["fmt", tmp], { timeout: 10000 }, (err, stdout, stderr) => {
+    try { fs.unlinkSync(tmp); } catch (_) {}
+    if (err) {
+      vscode.window.showWarningMessage("Ezy: format failed — " + (stderr || err.message).split("\n")[0]);
+      return;
+    }
+    if (!stdout) return;
+    const full = new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length));
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(doc.uri, full, stdout);
+    vscode.workspace.applyEdit(edit);
+  });
+}
+
 function activate(context) {
   const serverModule = context.asAbsolutePath(path.join("server", "server.js"));
   const serverOptions = {
@@ -55,14 +83,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand("ezy.run", () => runCurrentFile(false)),
     vscode.commands.registerCommand("ezy.compile", () => runCurrentFile(true)),
-    vscode.commands.registerCommand("ezy.format", async () => {
-      const ed = vscode.window.activeTextEditor;
-      if (!ed || ed.document.languageId !== "ezy") {
-        vscode.window.showWarningMessage("Ezy: no .ez file is active.");
-        return;
-      }
-      await vscode.commands.executeCommand("editor.action.formatDocument");
-    }),
+    vscode.commands.registerCommand("ezy.format", () => formatCurrentFile()),
     vscode.window.onDidCloseTerminal((t) => { if (t === ezyTerminal) ezyTerminal = null; })
   );
 }
