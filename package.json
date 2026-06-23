@@ -2,7 +2,7 @@
   "name": "ezy-lang",
   "displayName": "Ezy Language",
   "description": "Language server for Ezy (.ez): diagnostics, completion, hover, go-to-definition, signature help, outline, folding, and formatting — \"The clarity of Python, the speed of C\".",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "publisher": "LikeIWantTheCoco",
   "license": "GPL-2.0",
   "engines": {
@@ -41,6 +41,11 @@
       {
         "command": "ezy.format",
         "title": "Ezy: Format File"
+      },
+      {
+        "command": "ezy.doctor",
+        "title": "Ezy: Doctor (static analysis report)",
+        "icon": "$(stethoscope)"
       }
     ],
     "menus": {
@@ -66,6 +71,11 @@
           "command": "ezy.format",
           "when": "resourceLangId == ezy",
           "group": "z_ezy@3"
+        },
+        {
+          "command": "ezy.doctor",
+          "when": "resourceLangId == ezy",
+          "group": "z_ezy@4"
         }
       ],
       "commandPalette": [
@@ -79,6 +89,10 @@
         },
         {
           "command": "ezy.format",
+          "when": "resourceLangId == ezy"
+        },
+        {
+          "command": "ezy.doctor",
           "when": "resourceLangId == ezy"
         }
       ]

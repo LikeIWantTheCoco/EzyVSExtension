@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- New command **Ezy: Doctor** — runs `ezy doctor` on the saved file in the Ezy
+  terminal and shows the full text report (same as the CLI), complementing the
+  inline squiggles. Available in the command palette and editor context menu.
+
 ## 0.6.1
 
 - f-strings (`f"..."`) are no longer mis-analyzed: the `f` prefix and the string

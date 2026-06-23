@@ -29,14 +29,14 @@ function terminal() {
   return ezyTerminal;
 }
 
-async function runCurrentFile(compileOnly) {
+async function runCurrentFile(subcommand) {
   const ed = vscode.window.activeTextEditor;
   if (!ed || ed.document.languageId !== "ezy") { vscode.window.showWarningMessage("Ezy: no .ez file is active."); return; }
-  if (ed.document.isUntitled) { vscode.window.showWarningMessage("Ezy: save the file before running."); return; }
+  if (ed.document.isUntitled) { vscode.window.showWarningMessage("Ezy: save the file first."); return; }
   await ed.document.save();
   const t = terminal();
   t.show(true);
-  t.sendText(`${ezyBinary()} ${compileOnly ? "compile" : "run"} ${JSON.stringify(ed.document.uri.fsPath)}`);
+  t.sendText(`${ezyBinary()} ${subcommand} ${JSON.stringify(ed.document.uri.fsPath)}`);
 }
 
 // Run `ezy fmt` on a temp copy of the active buffer and replace its contents.
@@ -81,8 +81,9 @@ function activate(context) {
   client.start();
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ezy.run", () => runCurrentFile(false)),
-    vscode.commands.registerCommand("ezy.compile", () => runCurrentFile(true)),
+    vscode.commands.registerCommand("ezy.run", () => runCurrentFile("run")),
+    vscode.commands.registerCommand("ezy.compile", () => runCurrentFile("compile")),
+    vscode.commands.registerCommand("ezy.doctor", () => runCurrentFile("doctor")),
     vscode.commands.registerCommand("ezy.format", () => formatCurrentFile()),
     vscode.window.onDidCloseTerminal((t) => { if (t === ezyTerminal) ezyTerminal = null; })
   );
