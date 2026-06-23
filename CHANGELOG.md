@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+- **Language server** (`vscode-languageserver`) — all language intelligence now
+  runs in a dedicated server process via the Language Server Protocol:
+  - Diagnostics from `ezy doctor` (debounced on type, or on save).
+  - Completion: keywords, types, constants, builtins (with signatures), and
+    symbols from the current file.
+  - Hover docs for builtins, types, and constructs.
+  - **Go-to-definition** across the whole workspace (fn/class/struct/enum/const).
+  - **Signature help** for builtins and user functions.
+  - Outline/breadcrumb symbols and folding (braces + `# region`).
+  - Formatting via `ezy fmt`.
+- Run / Compile terminal commands remain on the client.
+- Requires VS Code ^1.75.
+
 ## 0.3.0
 
 - Formatting via `ezy fmt` (format document / format on save).

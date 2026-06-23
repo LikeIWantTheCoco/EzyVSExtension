@@ -14,8 +14,13 @@ icon, snippets, and editor smarts for `.ez` files.
 - **Snippets / completion** — `main`, `fn`, `if`, `for`, `while`, `class`,
   `struct`, `enum`, `match`, `switch`, `try`, `region`, … plus buffer-word and
   builtin-function completion.
+- **Language server** — a dedicated LSP process powers the intelligence below;
+  open the *Output → Ezy Language Server* channel to see its logs.
 - **Diagnostics** — runs `ezy doctor` on the buffer and shows error/warning
   squiggles inline (debounced on type, or on save).
+- **Go-to-definition** — jump to a `fn`/`class`/`struct`/`enum`/`const`
+  definition anywhere in the workspace (F12).
+- **Signature help** — parameter hints for builtins and your own functions.
 - **Formatting** — `ezy fmt` as the document formatter (supports format-on-save).
 - **Run / Compile** — *Ezy: Run File* (`Ctrl+F5`) and *Ezy: Compile File* run in
   an integrated terminal; a run button is added to the editor title bar.
