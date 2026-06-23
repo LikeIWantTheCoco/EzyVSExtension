@@ -16,6 +16,8 @@ const {
   Location,
   FoldingRangeKind,
   MarkupKind,
+  SemanticTokensBuilder,
+  CodeActionKind,
 } = require("vscode-languageserver/node");
 const { TextDocument } = require("vscode-languageserver-textdocument");
 const cp = require("child_process");
@@ -66,6 +68,12 @@ const HOVERS = {
   spawn: "Spawn a goroutine (pthread).",
   chan: "Channel type. `make(chan, cap)`; send `ch <- v`, recv `<-ch`.",
 };
+
+const SEM_TYPES = ["namespace", "type", "class", "enum", "struct", "interface",
+  "parameter", "variable", "property", "function", "method"];
+const SEM_MODS = ["declaration", "readonly", "defaultLibrary"];
+const semTypeIndex = Object.fromEntries(SEM_TYPES.map((t, i) => [t, i]));
+const semModBit = Object.fromEntries(SEM_MODS.map((m, i) => [m, 1 << i]));
 
 /* ── ezy binary resolution ──────────────────────────────────────── */
 
@@ -262,7 +270,7 @@ function analyzeUndefined(doc) {
       if (next === "=" && next2 !== "=") continue;        // assignment / struct field
       const isCall = next === "(";
       diags.push({
-        severity: DiagnosticSeverity.Warning,
+        severity: DiagnosticSeverity.Error,
         range: Range.create(li, start, li, end),
         message: isCall ? `call to undefined function '${word}'` : `use of undefined name '${word}'`,
         source: "ezy",
@@ -404,9 +412,16 @@ connection.onInitialize((params) => {
       hoverProvider: true,
       documentSymbolProvider: true,
       definitionProvider: true,
+      referencesProvider: true,
+      renameProvider: { prepareProvider: true },
       foldingRangeProvider: true,
       documentFormattingProvider: true,
       signatureHelpProvider: { triggerCharacters: ["(", ","] },
+      codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+      semanticTokensProvider: {
+        legend: { tokenTypes: SEM_TYPES, tokenModifiers: SEM_MODS },
+        full: true,
+      },
     },
   };
 });
@@ -431,6 +446,10 @@ documents.onDidClose((e) => connection.sendDiagnostics({ uri: e.document.uri, di
 
 connection.onCompletion((params) => {
   const doc = documents.get(params.textDocument.uri);
+  if (doc) {
+    const member = memberCompletion(doc, params.position);
+    if (member) return member;
+  }
   const items = [];
   const seen = new Set();
   const add = (label, kind, detail) => {
@@ -549,6 +568,230 @@ connection.onSignatureHelp((params) => {
     activeSignature: 0,
     activeParameter: Math.min(active, Math.max(0, params2.length - 1)),
   };
+});
+
+/* ── semantic tokens ────────────────────────────────────────────── */
+
+const KEYWORD_SET = new Set(KEYWORDS);
+
+connection.languages.semanticTokens.on((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  const builder = new SemanticTokensBuilder();
+  if (!doc) return builder.build();
+  const fsPath = uriToPath(doc.uri);
+  const docDir = fsPath ? path.dirname(fsPath) : os.tmpdir();
+  const masked = maskCode(doc.getText());
+  const { fns, names } = collectDefined(masked, docDir);
+  const typeNames = new Set();
+  let m;
+  const tyRe = /\b(?:class|struct|enum|interface|type)\s+([A-Za-z_]\w*)/g;
+  while ((m = tyRe.exec(masked))) typeNames.add(m[1]);
+  const paramNames = new Set();
+  const paramRe = /\bfn\b\s*[A-Za-z_]*\s*\(([^)]*)\)/g;
+  while ((m = paramRe.exec(masked)))
+    for (const p of m[1].split(",")) { const nm = p.trim().split(/[:\s]/)[0]; if (/^[A-Za-z_]\w*$/.test(nm)) paramNames.add(nm); }
+
+  const lines = masked.split(/\r?\n/);
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const tokRe = /[A-Za-z_]\w*/g;
+    while ((m = tokRe.exec(line))) {
+      const word = m[0], start = m.index, end = start + word.length;
+      if (KEYWORD_SET.has(word) || CONSTS.includes(word)) continue; // TextMate handles
+      let p = start - 1; while (p >= 0 && line[p] === " ") p--;
+      const prev = p >= 0 ? line[p] : "";
+      let q = end; while (q < line.length && line[q] === " ") q++;
+      const next = q < line.length ? line[q] : "";
+      // declaration context: token right after a declaring keyword
+      const before = line.slice(0, start);
+      const declKw = /\b(fn|class|struct|enum|interface|type)\s+$/.exec(before);
+      let tt = null, mods = 0;
+      if (declKw) {
+        tt = declKw[1] === "fn" ? "function" : (declKw[1] === "class" ? "class" : declKw[1] === "enum" ? "enum" : declKw[1] === "struct" ? "struct" : declKw[1] === "interface" ? "interface" : "type");
+        mods |= semModBit.declaration;
+      } else if (prev === ".") {
+        tt = next === "(" ? "method" : "property";
+      } else if (TYPES.includes(word) || typeNames.has(word)) {
+        tt = typeNames.has(word) ? "class" : "type";
+      } else if (BUILTINS.includes(word)) {
+        tt = "function"; mods |= semModBit.defaultLibrary;
+      } else if (next === "(" && (fns.has(word) || !names.has(word))) {
+        tt = "function";
+      } else if (paramNames.has(word)) {
+        tt = "parameter";
+      } else if (names.has(word)) {
+        tt = "variable";
+      } else {
+        continue; // unknown — let other layers handle / error diagnostic covers it
+      }
+      const idx = semTypeIndex[tt];
+      if (idx === undefined) continue;
+      builder.push(li, start, word.length, idx, mods);
+    }
+  }
+  return builder.build();
+});
+
+/* ── references & rename ────────────────────────────────────────── */
+
+function allWorkspaceFiles() {
+  const files = [];
+  for (const root of workspaceRoots) listEzFiles(root, files, 0);
+  return [...new Set(files)];
+}
+
+function findOccurrences(name) {
+  const result = []; // { uri, line, char }
+  const open = new Map();
+  for (const d of documents.all()) { const p = uriToPath(d.uri); if (p) open.set(p, d.getText()); }
+  const files = allWorkspaceFiles();
+  // include open docs that may be outside the scanned roots
+  for (const [p] of open) if (!files.includes(p)) files.push(p);
+  const re = new RegExp("(?<![A-Za-z0-9_.])" + name + "(?![A-Za-z0-9_])", "g");
+  for (const f of files) {
+    let text = open.get(f);
+    if (text === undefined) { try { text = fs.readFileSync(f, "utf8"); } catch (_) { continue; } }
+    const masked = maskCode(text);
+    const lines = masked.split(/\r?\n/);
+    for (let li = 0; li < lines.length; li++) {
+      let m;
+      re.lastIndex = 0;
+      while ((m = re.exec(lines[li]))) result.push({ uri: url.pathToFileURL(f).href, line: li, char: m.index });
+    }
+  }
+  return result;
+}
+
+connection.onReferences((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  const word = wordAt(doc, params.position);
+  if (!word || /^\d/.test(word)) return null;
+  return findOccurrences(word).map((o) =>
+    Location.create(o.uri, Range.create(o.line, o.char, o.line, o.char + word.length)));
+});
+
+connection.onPrepareRename((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  const r = wordRangeAt(doc, params.position.line, params.position.character);
+  const word = doc.getText(r);
+  if (!word || /^\d/.test(word) || KEYWORD_SET.has(word)) return null;
+  return r;
+});
+
+connection.onRenameRequest((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  const word = wordAt(doc, params.position);
+  if (!word) return null;
+  const changes = {};
+  for (const o of findOccurrences(word)) {
+    (changes[o.uri] = changes[o.uri] || []).push(
+      TextEdit.replace(Range.create(o.line, o.char, o.line, o.char + word.length), params.newName));
+  }
+  return { changes };
+});
+
+/* ── member completion (obj. -> methods/fields) ─────────────────── */
+
+function classBody(masked, typeName) {
+  const re = new RegExp("\\b(?:class|struct)\\s+" + typeName + "\\b[^\\n]*\\n");
+  const m = re.exec(masked);
+  if (!m) return null;
+  // capture until the matching closing brace of the first '{'
+  let i = masked.indexOf("{", m.index);
+  if (i < 0) return null;
+  let depth = 0, start = i;
+  for (; i < masked.length; i++) {
+    if (masked[i] === "{") depth++;
+    else if (masked[i] === "}") { depth--; if (depth === 0) return masked.slice(start + 1, i); }
+  }
+  return masked.slice(start + 1);
+}
+
+function inferType(masked, receiver) {
+  let m;
+  let re = new RegExp("\\b" + receiver + "\\s*=\\s*([A-Z]\\w*)_new\\b");
+  if ((m = re.exec(masked))) return m[1];
+  re = new RegExp("\\b" + receiver + "\\s*=\\s*([A-Z]\\w*)\\s*\\{");
+  if ((m = re.exec(masked))) return m[1];
+  re = new RegExp("\\b" + receiver + "\\s*:\\s*\\*?\\[?\\s*([A-Za-z_]\\w*)");
+  if ((m = re.exec(masked))) return m[1];
+  return null;
+}
+
+const STRING_METHODS = ["upper","lower","strip","lstrip","rstrip","title","find","index","rfind",
+  "replace","startswith","endswith","contains","split","splitlines","count","reverse","len",
+  "padl","padr","center","to_int","translate"];
+const ARRAY_METHODS = ["push","pop","len","contains","sort","sorted","reverse","slice","remove",
+  "extend","join","map","filter","any","all","sum","reduce","unique","flatten"];
+const DICT_METHODS = ["get","set","has","remove","keys","values","len","clear"];
+const SET_METHODS = ["add","contains","len","union","intersection","difference"];
+
+function memberCompletion(doc, position) {
+  const lineText0 = doc.getText(Range.create(position.line, 0, position.line, position.character));
+  const mm = /([A-Za-z_]\w*)\s*\.\s*$/.exec(lineText0);
+  if (!mm) return null;
+  const receiver = mm[1];
+  const masked = maskCode(doc.getText());
+  const items = [];
+  const addAll = (arr, kind) => arr.forEach((n) => items.push({ label: n, kind }));
+  const type = inferType(masked, receiver);
+  if (type) {
+    if (["string", "char"].includes(type)) addAll(STRING_METHODS, CompletionItemKind.Method);
+    else if (type === "dict") addAll(DICT_METHODS, CompletionItemKind.Method);
+    else if (type === "set") addAll(SET_METHODS, CompletionItemKind.Method);
+    else {
+      const body = classBody(masked, type);
+      if (body) {
+        let m; const re = /\bfn\s+([A-Za-z_]\w*)/g;
+        while ((m = re.exec(body))) if (m[1] !== "constructor") items.push({ label: m[1], kind: CompletionItemKind.Method, detail: type + " method" });
+        const fre = /^\s*([A-Za-z_]\w*)\s*:/gm;
+        while ((m = fre.exec(body))) items.push({ label: m[1], kind: CompletionItemKind.Field, detail: type + " field" });
+      }
+    }
+  }
+  // arrays/strings created by literals are hard to type; offer common array methods as fallback
+  if (!items.length) addAll(ARRAY_METHODS, CompletionItemKind.Method);
+  return items;
+}
+
+/* ── code actions / quick fixes ─────────────────────────────────── */
+
+connection.onCodeAction((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+  const actions = [];
+  for (const d of params.context.diagnostics || []) {
+    let m;
+    if ((m = /call to undefined function '([A-Za-z_]\w*)'/.exec(d.message))) {
+      const name = m[1];
+      // count args at the call site to shape the stub
+      const callLine = lineText(doc, d.range.start.line);
+      const after = callLine.slice(d.range.end.character);
+      const am = /^\s*\(([^)]*)\)/.exec(after);
+      const argc = am && am[1].trim() ? am[1].split(",").length : 0;
+      const ps = Array.from({ length: argc }, (_, i) => `arg${i}: int`).join(", ");
+      const stub = `\nfn ${name}(${ps}) -> int:\n{\n    return 0\n}\n`;
+      const endLine = doc.lineCount;
+      actions.push({
+        title: `Create function '${name}'`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [d],
+        edit: { changes: { [doc.uri]: [TextEdit.insert(Position.create(endLine, 0), stub)] } },
+      });
+    } else if (/declared but never used/.test(d.message)) {
+      const ln = d.range.start.line;
+      actions.push({
+        title: "Remove unused variable",
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [d],
+        edit: { changes: { [doc.uri]: [TextEdit.del(Range.create(ln, 0, ln + 1, 0))] } },
+      });
+    }
+  }
+  return actions;
 });
 
 documents.listen(connection);

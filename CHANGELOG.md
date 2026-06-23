@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0
+
+- **Semantic tokens**: real var/type/function/method/parameter/property coloring
+  driven by the document's symbol tables (so a capitalized variable is no longer
+  mis-colored as a type).
+- **Find references** and **workspace rename** for identifiers across all `.ez`
+  files in the workspace (string/comment occurrences excluded).
+- **Member completion**: `obj.` lists methods and fields when the receiver's type
+  can be inferred (`x = Type_new(...)`, `x = Type{...}`, `x: Type`); string / dict
+  / set get their builtin method sets.
+- **Quick fixes**: "Create function 'X'" for an undefined call (arity inferred
+  from the call site) and "Remove unused variable" for the doctor warning.
+- Undefined functions/names are now reported as **errors (red)**, not warnings.
+- Publisher set to `LikeIWantTheCoco`.
+
 ## 0.5.0
 
 - Undefined-name warnings (yellow): the server flags calls to functions and uses

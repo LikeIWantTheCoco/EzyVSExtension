@@ -48,6 +48,19 @@ language icons (e.g. *Minimal (Visual Studio Code)* via
 `Preferences: File Icon Theme`). The default *Seti* theme draws its own icons by
 extension and will show a generic icon for unknown types like `.ez`.
 
+## Publishing to the Marketplace
+
+The `publisher` field is `LikeIWantTheCoco`. To publish you must own that
+publisher on the VS Code Marketplace and have a Personal Access Token:
+
+```bash
+npm i -g @vscode/vsce
+vsce login LikeIWantTheCoco     # paste the Azure DevOps PAT
+vsce publish                    # or: vsce publish minor
+```
+
+(For Open VSX / VSCodium's registry, use `npx ovsx publish ezy-lang-*.vsix -p <token>`.)
+
 ## Install (local / from source)
 
 ```bash
