@@ -8,11 +8,15 @@
     { "include": "#preprocessor" },
     { "include": "#function-definition" },
     { "include": "#type-definition" },
+    { "include": "#type-annotation" },
     { "include": "#keywords" },
     { "include": "#constants" },
     { "include": "#types" },
     { "include": "#builtins" },
     { "include": "#enum-variants" },
+    { "include": "#struct-literal" },
+    { "include": "#method-call" },
+    { "include": "#property" },
     { "include": "#numbers" },
     { "include": "#operators" },
     { "include": "#function-call" }
@@ -35,11 +39,12 @@
     "preprocessor": {
       "patterns": [
         {
-          "name": "meta.preprocessor.include.ezy",
-          "match": "^\\s*(#include|import)\\b\\s*(\"[^\"]*\")?(\\s+(as)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+          "name": "meta.import.ezy",
+          "match": "^\\s*(#include|import)\\b\\s*(?:(\"[^\"]*\")|([A-Za-z_][A-Za-z0-9_./-]*))?(?:\\s+(as)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
           "captures": {
             "1": { "name": "keyword.control.import.ezy" },
             "2": { "name": "string.quoted.double.ezy" },
+            "3": { "name": "entity.name.namespace.ezy" },
             "4": { "name": "keyword.control.import.ezy" },
             "5": { "name": "entity.name.namespace.ezy" }
           }
@@ -59,13 +64,15 @@
               "begin": "\\{",
               "end": "\\}",
               "patterns": [
-                { "include": "#builtins" },
-                { "include": "#constants" },
-                { "include": "#numbers" },
                 {
                   "name": "constant.other.format-spec.ezy",
                   "match": ":[^}]*"
                 },
+                { "include": "#builtins" },
+                { "include": "#constants" },
+                { "include": "#numbers" },
+                { "include": "#method-call" },
+                { "include": "#property" },
                 {
                   "name": "variable.other.ezy",
                   "match": "[A-Za-z_][A-Za-z0-9_]*"
@@ -89,17 +96,40 @@
       ]
     },
     "function-definition": {
-      "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
-      "captures": {
+      "begin": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()",
+      "beginCaptures": {
         "1": { "name": "keyword.declaration.function.ezy" },
-        "2": { "name": "entity.name.function.ezy" }
-      }
+        "2": { "name": "entity.name.function.ezy" },
+        "3": { "name": "punctuation.definition.parameters.begin.ezy" }
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.parameters.end.ezy" }
+      },
+      "patterns": [
+        { "include": "#type-annotation" },
+        { "include": "#types" },
+        { "include": "#constants" },
+        {
+          "name": "variable.parameter.ezy",
+          "match": "[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
     },
     "type-definition": {
-      "match": "\\b(class|struct|enum|interface|impl|type)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(class|struct|enum|interface|impl|type)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*))?",
       "captures": {
         "1": { "name": "keyword.declaration.type.ezy" },
-        "2": { "name": "entity.name.type.ezy" }
+        "2": { "name": "entity.name.type.ezy" },
+        "3": { "name": "keyword.operator.inherit.ezy" },
+        "4": { "name": "entity.other.inherited-class.ezy" }
+      }
+    },
+    "type-annotation": {
+      "match": "(->|:)\\s*(\\[\\s*)?(\\*\\s*)?\\b(int|float|bool|string|char|void|dict|set|chan|[A-Z][A-Za-z0-9_]*)\\b",
+      "captures": {
+        "1": { "name": "keyword.operator.type.ezy" },
+        "4": { "name": "support.type.ezy" }
       }
     },
     "keywords": {
@@ -109,8 +139,12 @@
           "match": "\\b(if|elif|else|for|while|do|switch|case|default|match|break|continue|return|try|except|defer|pass|in|go|select|region)\\b"
         },
         {
+          "name": "storage.modifier.ezy",
+          "match": "\\b(pub|priv|extern|const|global|static)\\b"
+        },
+        {
           "name": "keyword.declaration.ezy",
-          "match": "\\b(fn|class|struct|enum|interface|impl|type|const|let|var|global|def|lambda|extern|import|pub|priv|op)\\b"
+          "match": "\\b(fn|class|struct|enum|interface|impl|type|let|var|def|lambda|import|op)\\b"
         },
         {
           "name": "keyword.operator.word.ezy",
@@ -135,6 +169,10 @@
         {
           "name": "variable.language.self.ezy",
           "match": "\\bself\\b"
+        },
+        {
+          "name": "constant.other.caps.ezy",
+          "match": "\\b[A-Z][A-Z0-9_]{2,}\\b"
         }
       ]
     },
@@ -151,6 +189,24 @@
       "captures": {
         "1": { "name": "entity.name.type.ezy" },
         "2": { "name": "constant.other.enum.ezy" }
+      }
+    },
+    "struct-literal": {
+      "match": "\\b([A-Z][A-Za-z0-9_]*)\\s*(?=\\{)",
+      "captures": {
+        "1": { "name": "entity.name.type.ezy" }
+      }
+    },
+    "method-call": {
+      "match": "\\.([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.member.ezy" }
+      }
+    },
+    "property": {
+      "match": "\\.([A-Za-z_][A-Za-z0-9_]*)\\b",
+      "captures": {
+        "1": { "name": "variable.other.property.ezy" }
       }
     },
     "numbers": {

@@ -2,7 +2,7 @@
   "name": "ezy-lang",
   "displayName": "Ezy Language",
   "description": "Language server for Ezy (.ez): diagnostics, completion, hover, go-to-definition, signature help, outline, folding, and formatting — \"The clarity of Python, the speed of C\".",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "ezylang",
   "license": "GPL-2.0",
   "engines": {
@@ -37,6 +37,10 @@
         "command": "ezy.compile",
         "title": "Ezy: Compile File",
         "icon": "$(gear)"
+      },
+      {
+        "command": "ezy.format",
+        "title": "Ezy: Format File"
       }
     ],
     "menus": {
@@ -57,6 +61,11 @@
           "command": "ezy.compile",
           "when": "resourceLangId == ezy",
           "group": "z_ezy@2"
+        },
+        {
+          "command": "ezy.format",
+          "when": "resourceLangId == ezy",
+          "group": "z_ezy@3"
         }
       ],
       "commandPalette": [
@@ -66,6 +75,10 @@
         },
         {
           "command": "ezy.compile",
+          "when": "resourceLangId == ezy"
+        },
+        {
+          "command": "ezy.format",
           "when": "resourceLangId == ezy"
         }
       ]

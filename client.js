@@ -55,6 +55,14 @@ function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand("ezy.run", () => runCurrentFile(false)),
     vscode.commands.registerCommand("ezy.compile", () => runCurrentFile(true)),
+    vscode.commands.registerCommand("ezy.format", async () => {
+      const ed = vscode.window.activeTextEditor;
+      if (!ed || ed.document.languageId !== "ezy") {
+        vscode.window.showWarningMessage("Ezy: no .ez file is active.");
+        return;
+      }
+      await vscode.commands.executeCommand("editor.action.formatDocument");
+    }),
     vscode.window.onDidCloseTerminal((t) => { if (t === ezyTerminal) ezyTerminal = null; })
   );
 }

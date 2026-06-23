@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2
+
+- Richer syntax highlighting: bare `import name` (no quotes), type annotations
+  (`: Type`, `-> Type`), function parameters, struct literals (`Point{...}`),
+  inheritance types (`class Dog: Animal`), method calls (`.foo()`), property
+  access (`.field`), UPPER_CASE constants, and CamelCase user types.
+- New command **Ezy: Format File** (also in the editor context menu and command
+  palette) that runs the `ezy fmt` formatter on the active file.
+
 ## 0.4.1
 
 - Fix: the language server crashed while building diagnostic ranges
