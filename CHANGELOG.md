@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- Undefined-name warnings (yellow): the server flags calls to functions and uses
+  of names that have no definition in the file, its imports, or the builtins.
+  Resolves imported library symbols from `~/.ezy/libs/<name>/<name>.ez` and local
+  `import`/`#include` files, so e.g. `import cli` keeps `cli_*` calls clean.
+  Toggle with `ezy.diagnostics.undefinedNames`. Heuristic — skips members,
+  type annotations, struct fields, and match/`if let` bindings to avoid noise.
+
 ## 0.4.2
 
 - Richer syntax highlighting: bare `import name` (no quotes), type annotations

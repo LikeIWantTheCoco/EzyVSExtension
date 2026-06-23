@@ -141,8 +141,141 @@ function parseDiagnostics(output, doc) {
   return diags;
 }
 
+/* ── undefined-name analysis (yellow warnings) ──────────────────── */
+
+// Replace string/comment contents with spaces, preserving length & newlines,
+// so identifier scanning never matches inside text.
+function maskCode(text) {
+  const out = text.split("");
+  const n = text.length;
+  const blank = (a, b) => { for (let k = a; k < b; k++) if (out[k] !== "\n") out[k] = " "; };
+  let i = 0;
+  while (i < n) {
+    if (text.startsWith('"""', i)) {
+      let j = text.indexOf('"""', i + 3); j = j < 0 ? n : j + 3; blank(i, j); i = j; continue;
+    }
+    const c = text[i];
+    if (c === "#") { let j = text.indexOf("\n", i); if (j < 0) j = n; blank(i, j); i = j; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (text[j] === "\\") { j += 2; continue; }
+        if (text[j] === c || text[j] === "\n") { if (text[j] === c) j++; break; }
+        j++;
+      }
+      blank(i, j); i = j; continue;
+    }
+    i++;
+  }
+  return out.join("");
+}
+
+const headerCache = new Map(); // path -> { mtime, fns:[], names:[] }
+
+function addNamesFromFile(p, fns, names) {
+  let stat;
+  try { stat = fs.statSync(p); } catch (_) { return; }
+  const cached = headerCache.get(p);
+  if (cached && cached.mtime === stat.mtimeMs) {
+    cached.fns.forEach((x) => { fns.add(x); names.add(x); });
+    cached.names.forEach((x) => names.add(x));
+    return;
+  }
+  let text;
+  try { text = fs.readFileSync(p, "utf8"); } catch (_) { return; }
+  const masked = maskCode(text);
+  const f = [], nm = [];
+  let m;
+  const fnRe = /\b(?:extern\s+)?fn\s+([A-Za-z_]\w*)/g;
+  while ((m = fnRe.exec(masked))) { f.push(m[1]); }
+  const tyRe = /\b(?:class|struct|enum|interface|type|const|global)\s+([A-Za-z_]\w*)/g;
+  while ((m = tyRe.exec(masked))) { nm.push(m[1]); }
+  headerCache.set(p, { mtime: stat.mtimeMs, fns: f, names: nm });
+  f.forEach((x) => { fns.add(x); names.add(x); });
+  nm.forEach((x) => names.add(x));
+}
+
+function collectDefined(masked, docDir) {
+  const fns = new Set(), names = new Set();
+  let m;
+  const fnRe = /\b(?:extern\s+)?fn\s+([A-Za-z_]\w*)/g;
+  while ((m = fnRe.exec(masked))) { fns.add(m[1]); names.add(m[1]); }
+  const tyRe = /\b(?:class|struct|enum|interface|type)\s+([A-Za-z_]\w*)/g;
+  while ((m = tyRe.exec(masked))) names.add(m[1]);
+  const declRe = /\b(?:const|global|let|var)\s+([A-Za-z_]\w*)/g;
+  while ((m = declRe.exec(masked))) names.add(m[1]);
+  const paramRe = /\bfn\b\s*[A-Za-z_]*\s*\(([^)]*)\)/g;
+  while ((m = paramRe.exec(masked)))
+    for (const p of m[1].split(",")) { const nm = p.trim().split(/[:\s]/)[0]; if (/^[A-Za-z_]\w*$/.test(nm)) names.add(nm); }
+  const asgRe = /^[ \t]*([A-Za-z_]\w*)\s*(?::[^=\n]+)?(?:[-+*/%&|^]|\*\*|\/\/|<<|>>)?=(?!=)/gm;
+  while ((m = asgRe.exec(masked))) names.add(m[1]);
+  const forRe = /\bfor\s+([A-Za-z_]\w*)(?:\s*,\s*([A-Za-z_]\w*))?\s+in\b/g;
+  while ((m = forRe.exec(masked))) { names.add(m[1]); if (m[2]) names.add(m[2]); }
+  const exRe = /\bexcept\s+([A-Za-z_]\w*)/g;
+  while ((m = exRe.exec(masked))) names.add(m[1]);
+  // bindings: case Pat(x), if let Ok(x)
+  const bindRe = /\b(?:case|let)\b[^\n=]*?\(([A-Za-z_]\w*)\)/g;
+  while ((m = bindRe.exec(masked))) names.add(m[1]);
+  // imports
+  const impRe = /^[ \t]*(?:import|#include)\s+(?:"([^"]+)"|([A-Za-z_][\w./-]*))(?:\s+as\s+([A-Za-z_]\w*))?/gm;
+  while ((m = impRe.exec(masked))) {
+    const spec = m[1] || m[2]; const alias = m[3];
+    if (alias) names.add(alias);
+    if (!spec) continue;
+    if (spec.endsWith(".ez")) {
+      const p = path.isAbsolute(spec) ? spec : path.join(docDir, spec);
+      addNamesFromFile(p, fns, names);
+      names.add(path.basename(spec, ".ez"));
+    } else {
+      const lib = spec.split("/").pop();
+      names.add(lib);
+      addNamesFromFile(path.join(os.homedir(), ".ezy", "libs", lib, lib + ".ez"), fns, names);
+    }
+  }
+  return { fns, names };
+}
+
+const ALWAYS_KNOWN = new Set([...KEYWORDS, ...TYPES, ...CONSTS, ...BUILTINS, "self", "main", "iota"]);
+
+function analyzeUndefined(doc) {
+  const fsPath = uriToPath(doc.uri);
+  const docDir = fsPath ? path.dirname(fsPath) : os.tmpdir();
+  const masked = maskCode(doc.getText());
+  const { names } = collectDefined(masked, docDir);
+  const diags = [];
+  const lines = masked.split(/\r?\n/);
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    if (/^\s*case\b/.test(line) || /\bif\s+let\b/.test(line)) continue;
+    const tokRe = /[A-Za-z_]\w*/g;
+    let m;
+    while ((m = tokRe.exec(line))) {
+      const word = m[0], start = m.index, end = start + word.length;
+      if (ALWAYS_KNOWN.has(word) || names.has(word)) continue;
+      let p = start - 1; while (p >= 0 && line[p] === " ") p--;
+      const prev = p >= 0 ? line[p] : "";
+      if (prev === "." || prev === ":" || prev === ">") continue; // member / type / return
+      let q = end; while (q < line.length && line[q] === " ") q++;
+      const next = q < line.length ? line[q] : "";
+      const next2 = q + 1 < line.length ? line[q + 1] : "";
+      if (next === ":") continue;                       // declaration / label / annotation
+      if (next === "=" && next2 !== "=") continue;        // assignment / struct field
+      const isCall = next === "(";
+      diags.push({
+        severity: DiagnosticSeverity.Warning,
+        range: Range.create(li, start, li, end),
+        message: isCall ? `call to undefined function '${word}'` : `use of undefined name '${word}'`,
+        source: "ezy",
+      });
+    }
+  }
+  return diags;
+}
+
 function validate(doc) {
   if (!doc) return;
+  const undef = (settings.diagnostics && settings.diagnostics.undefinedNames === false)
+    ? [] : safeAnalyze(doc);
   runEzy(doc, ["doctor"], (err, stdout, stderr) => {
     if (err && err.code === "ENOENT") {
       connection.sendDiagnostics({
@@ -156,11 +289,18 @@ function validate(doc) {
       });
       return;
     }
-    connection.sendDiagnostics({
-      uri: doc.uri,
-      diagnostics: parseDiagnostics((stderr || "") + "\n" + (stdout || ""), doc),
-    });
+    const doctor = parseDiagnostics((stderr || "") + "\n" + (stdout || ""), doc);
+    // drop our warning if doctor already reports something on the same token
+    const taken = new Set(doctor.map((d) => d.range.start.line + ":" + d.range.start.character));
+    const merged = doctor.concat(
+      undef.filter((d) => !taken.has(d.range.start.line + ":" + d.range.start.character))
+    );
+    connection.sendDiagnostics({ uri: doc.uri, diagnostics: merged });
   });
+}
+
+function safeAnalyze(doc) {
+  try { return analyzeUndefined(doc); } catch (_) { return []; }
 }
 
 const timers = new Map();
