@@ -1,8 +1,8 @@
 {
   "name": "ezy-lang",
   "displayName": "Ezy Language",
-  "description": "Syntax highlighting, icon, completion, and error diagnostics for the Ezy language (.ez) — \"The clarity of Python, the speed of C\".",
-  "version": "0.2.0",
+  "description": "Syntax highlighting, icon, completion, diagnostics, formatting, and run commands for the Ezy language (.ez) — \"The clarity of Python, the speed of C\".",
+  "version": "0.3.0",
   "publisher": "ezylang",
   "license": "GPL-2.0",
   "engines": {
@@ -27,6 +27,50 @@
     "url": "https://github.com/LikeIWantTheCoco/EzyLang"
   },
   "contributes": {
+    "commands": [
+      {
+        "command": "ezy.run",
+        "title": "Ezy: Run File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "ezy.compile",
+        "title": "Ezy: Compile File",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "ezy.run",
+          "when": "resourceLangId == ezy",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ezy.run",
+          "when": "resourceLangId == ezy",
+          "group": "z_ezy@1"
+        },
+        {
+          "command": "ezy.compile",
+          "when": "resourceLangId == ezy",
+          "group": "z_ezy@2"
+        }
+      ],
+      "commandPalette": [
+        { "command": "ezy.run", "when": "resourceLangId == ezy" },
+        { "command": "ezy.compile", "when": "resourceLangId == ezy" }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "ezy.run",
+        "key": "ctrl+f5",
+        "when": "resourceLangId == ezy"
+      }
+    ],
     "configuration": {
       "title": "Ezy",
       "properties": {

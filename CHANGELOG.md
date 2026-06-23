@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+- Formatting via `ezy fmt` (format document / format on save).
+- Commands: **Ezy: Run File** (Ctrl+F5) and **Ezy: Compile File** — run in an
+  integrated terminal; also in the editor title-bar run button and context menu.
+- Outline / breadcrumbs: document symbols for fn, class, struct, enum,
+  interface, const (methods detected by indentation).
+- Folding: brace blocks and `# region` / `# endregion` markers.
+- Completion: keywords, primitive types, constants, builtins, and symbols
+  defined in the current file.
+- Hover docs for builtins, types, and key constructs.
+- Blue logo.
+
 ## 0.2.0
 
 - Error/warning diagnostics: runs `ezy doctor` on the buffer and shows squiggles

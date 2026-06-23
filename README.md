@@ -14,8 +14,22 @@ icon, snippets, and editor smarts for `.ez` files.
 - **Snippets / completion** — `main`, `fn`, `if`, `for`, `while`, `class`,
   `struct`, `enum`, `match`, `switch`, `try`, `region`, … plus buffer-word and
   builtin-function completion.
+- **Diagnostics** — runs `ezy doctor` on the buffer and shows error/warning
+  squiggles inline (debounced on type, or on save).
+- **Formatting** — `ezy fmt` as the document formatter (supports format-on-save).
+- **Run / Compile** — *Ezy: Run File* (`Ctrl+F5`) and *Ezy: Compile File* run in
+  an integrated terminal; a run button is added to the editor title bar.
+- **Outline & folding** — symbols for functions, classes, structs, enums, and
+  constants in the breadcrumb/outline; folding for `{ }` blocks and
+  `# region` / `# endregion`.
+- **Hover** — short docs for builtins, types, and key constructs.
 - **Editor behavior** — bracket matching, auto-closing pairs, comment toggling
   (`#`), and block indentation after `:`.
+
+## Settings
+
+- `ezy.path` — path to the `ezy` compiler (empty = search `~/.local/bin` then PATH).
+- `ezy.diagnostics.run` — `onType` (default) or `onSave`.
 
 ## About the icon
 
