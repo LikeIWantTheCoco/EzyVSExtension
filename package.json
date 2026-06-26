@@ -2,7 +2,7 @@
   "name": "ezy-lang",
   "displayName": "Ezy Language",
   "description": "Language server for Ezy (.ez): diagnostics, completion, hover, go-to-definition, signature help, outline, folding, and formatting — \"The clarity of Python, the speed of C\".",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "LikeIWantTheCoco",
   "license": "GPL-2.0",
   "engines": {
@@ -46,6 +46,10 @@
         "command": "ezy.doctor",
         "title": "Ezy: Doctor (static analysis report)",
         "icon": "$(stethoscope)"
+      },
+      {
+        "command": "ezy.comment",
+        "title": "Ezy: Comment / Uncomment Selection"
       }
     ],
     "menus": {
@@ -76,6 +80,11 @@
           "command": "ezy.doctor",
           "when": "resourceLangId == ezy",
           "group": "z_ezy@4"
+        },
+        {
+          "command": "ezy.comment",
+          "when": "resourceLangId == ezy && editorTextFocus",
+          "group": "z_ezy@5"
         }
       ],
       "commandPalette": [
@@ -94,6 +103,10 @@
         {
           "command": "ezy.doctor",
           "when": "resourceLangId == ezy"
+        },
+        {
+          "command": "ezy.comment",
+          "when": "resourceLangId == ezy"
         }
       ]
     },
@@ -102,6 +115,11 @@
         "command": "ezy.run",
         "key": "ctrl+f5",
         "when": "resourceLangId == ezy"
+      },
+      {
+        "command": "ezy.comment",
+        "key": "ctrl+/",
+        "when": "resourceLangId == ezy && editorTextFocus && !editorReadonly"
       }
     ],
     "configuration": {

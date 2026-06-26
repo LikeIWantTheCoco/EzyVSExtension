@@ -213,7 +213,7 @@ function addNamesFromFile(p, fns, names) {
   nm.forEach((x) => names.add(x));
 }
 
-function collectDefined(masked, docDir) {
+function collectDefined(masked, docDir, raw) {
   const fns = new Set(), names = new Set();
   let m;
   const fnRe = /\b(?:extern\s+)?fn\s+([A-Za-z_]\w*)/g;
@@ -238,9 +238,11 @@ function collectDefined(masked, docDir) {
   // bindings: case Pat(x), if let Ok(x)
   const bindRe = /\b(?:case|let)\b[^\n=]*?\(([A-Za-z_]\w*)\)/g;
   while ((m = bindRe.exec(masked))) names.add(m[1]);
-  // imports
+  // imports — scan the RAW text: `#include` lines start with `#`, which maskCode
+  // blanks as a comment, so the masked copy hides them.
+  const impSrc = raw !== undefined ? raw : masked;
   const impRe = /^[ \t]*(?:import|#include)\s+(?:"([^"]+)"|([A-Za-z_][\w./-]*))(?:\s+as\s+([A-Za-z_]\w*))?/gm;
-  while ((m = impRe.exec(masked))) {
+  while ((m = impRe.exec(impSrc))) {
     const spec = m[1] || m[2]; const alias = m[3];
     if (alias) names.add(alias);
     if (!spec) continue;
@@ -262,8 +264,9 @@ const ALWAYS_KNOWN = new Set([...KEYWORDS, ...TYPES, ...CONSTS, ...BUILTINS, "se
 function analyzeUndefined(doc) {
   const fsPath = uriToPath(doc.uri);
   const docDir = fsPath ? path.dirname(fsPath) : os.tmpdir();
-  const masked = maskCode(doc.getText());
-  const { names } = collectDefined(masked, docDir);
+  const raw = doc.getText();
+  const masked = maskCode(raw);
+  const { names } = collectDefined(masked, docDir, raw);
   const diags = [];
   const lines = masked.split(/\r?\n/);
   for (let li = 0; li < lines.length; li++) {
@@ -580,8 +583,9 @@ connection.languages.semanticTokens.on((params) => {
   if (!doc) return builder.build();
   const fsPath = uriToPath(doc.uri);
   const docDir = fsPath ? path.dirname(fsPath) : os.tmpdir();
-  const masked = maskCode(doc.getText());
-  const { fns, names } = collectDefined(masked, docDir);
+  const raw = doc.getText();
+  const masked = maskCode(raw);
+  const { fns, names } = collectDefined(masked, docDir, raw);
   const typeNames = new Set();
   let m;
   const tyRe = /\b(?:class|struct|enum|interface|type)\s+([A-Za-z_]\w*)/g;

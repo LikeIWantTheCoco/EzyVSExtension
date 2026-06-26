@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+
+- Symbols brought in via `#include "other.ez"` are no longer flagged as
+  "undefined" errors. The importer scan was running on the comment-masked copy of
+  the source, where `#include` lines (starting with `#`) were blanked as comments,
+  so included functions/types were never collected. Imports are now scanned from
+  the raw text.
+- New command **Ezy: Comment / Uncomment Selection** (`ezy.comment`) — toggles
+  `#` line comments over the selected lines, aligned to the shallowest
+  indentation. Available in the editor context menu (right-click), command
+  palette, and bound to `Ctrl+/`.
+
 ## 0.7.0
 
 - New command **Ezy: Doctor** — runs `ezy doctor` on the saved file in the Ezy

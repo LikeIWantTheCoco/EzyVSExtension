@@ -66,6 +66,52 @@ function formatCurrentFile() {
   });
 }
 
+// Toggle `#` line comments over the selected lines (whole lines that the
+// selection touches). If every non-blank line is already commented, uncomment;
+// otherwise comment all of them, aligned to the least-indented line.
+function toggleComment() {
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || ed.document.languageId !== "ezy") {
+    vscode.window.showWarningMessage("Ezy: no .ez file is active.");
+    return;
+  }
+  const doc = ed.document;
+  return ed.edit((builder) => {
+    for (const sel of ed.selections) {
+      let last = sel.end.line;
+      // a selection that ends at column 0 doesn't really include that last line
+      if (last > sel.start.line && sel.end.character === 0) last--;
+      const lines = [];
+      for (let ln = sel.start.line; ln <= last; ln++) lines.push(ln);
+
+      const nonBlank = lines.filter((ln) => doc.lineAt(ln).text.trim() !== "");
+      const target = nonBlank.length ? nonBlank : lines;
+      const allCommented = target.every((ln) => /^\s*#/.test(doc.lineAt(ln).text));
+
+      if (allCommented) {
+        for (const ln of target) {
+          const text = doc.lineAt(ln).text;
+          const m = /^(\s*)#[ ]?/.exec(text); // drop `#` and one optional space
+          if (!m) continue;
+          builder.delete(new vscode.Range(ln, m[1].length, ln, m[0].length));
+        }
+      } else {
+        // align inserted `#` to the shallowest indentation among target lines
+        let indent = Infinity;
+        for (const ln of target) {
+          const t = doc.lineAt(ln).text;
+          indent = Math.min(indent, /^\s*/.exec(t)[0].length);
+        }
+        if (!isFinite(indent)) indent = 0;
+        for (const ln of target) {
+          if (nonBlank.length && doc.lineAt(ln).text.trim() === "") continue;
+          builder.insert(new vscode.Position(ln, indent), "# ");
+        }
+      }
+    }
+  });
+}
+
 function activate(context) {
   const serverModule = context.asAbsolutePath(path.join("server", "server.js"));
   const serverOptions = {
@@ -85,6 +131,7 @@ function activate(context) {
     vscode.commands.registerCommand("ezy.compile", () => runCurrentFile("compile")),
     vscode.commands.registerCommand("ezy.doctor", () => runCurrentFile("doctor")),
     vscode.commands.registerCommand("ezy.format", () => formatCurrentFile()),
+    vscode.commands.registerCommand("ezy.comment", () => toggleComment()),
     vscode.window.onDidCloseTerminal((t) => { if (t === ezyTerminal) ezyTerminal = null; })
   );
 }
